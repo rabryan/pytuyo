@@ -10,6 +10,11 @@ class Pytuyo(object):
     def __init__(self, usb_dev):
         self._usb_dev = usb_dev
         self._epin = None
+        
+        self.data_cb = None
+        self.device_info_cb = None
+        self.status_cb = None
+
         self.setup()
 
     def setup(self):
@@ -53,13 +58,60 @@ class Pytuyo(object):
     
     def request_device_info(self):
         self.send_cmd('V')
+    
+    def _process_data_resp(self, response):
+        MIN_DATA_LEN=4
+        if len(response) < MIN_DATA_LEN:
+            log.error("Invalid data measurement resp '{}'".format(response))
+            return
+    
+        #ignore first two characters - always "1A"
+        measure_str = response[2:] 
+    
+        try:
+            val = float(measure_str)
+        except ValueError as e:
+            log.error("Unable to parse measurement '{}' to float".format(measure_str))
+            return
+        
+        log.debug("Received measure data value: {}".format(val))
 
+        if self.data_cb: self.data_cb(val)
+    
+    def _process_device_info_resp(self, response):
+        log.debug("Received device info msg : {}".format(response))
+
+        if self.device_info_cb: self.device_info_cb(response)
+    
+    def _process_status_resp(self, response):
+        log.debug("Received device status msg : {}".format(response))
+
+        if self.status_cb: self.status_cb(response)
+        
+        
     def check_resp(self):
         if self._epin is None:
             raise Exception("Device not setup correcly for reading - no interrupt IN endpoint")
         try:
-            reading = self._epin.read(MAX_RESP)
-            return reading.tobytes().decode()
+            resp = self._epin.read(MAX_RESP)
+
+            if not resp or len(resp) == 0:
+                return
+            
+            DATA_MSG='0'
+            DEVICE_INFO_MSG='1'
+            STATUS_MSG='9'
+
+            resp = resp.tobytes().decode()
+            cmd_c = resp[0]
+            if cmd_c == DATA_MSG:
+                self._process_data_resp(resp[1:])
+            elif cmd_c == DEVICE_INFO_MSG:
+                self._process_device_info_resp(resp[1:])
+            elif cmd_c == STATUS_MSG:
+                self._process_status_resp(resp[1:])
+            else:
+                log.error("Ignoring unexpected device resp {}".format(resp))
         except usb.USBError as e:
             if e.errno == 110:
                 log.debug("USB timeout waiting for response")
@@ -83,7 +135,7 @@ def make_parser():
 if __name__ == '__main__':
     import sys
     import time
-
+    log.basicConfig(level=log.INFO)
     parser = make_parser()
     args = parser.parse_args()
     
@@ -93,16 +145,20 @@ if __name__ == '__main__':
         sys.exit(1)
 
     p = Pytuyo(d)
+    
+    p.data_cb = lambda v: print("M:{}".format(v))
+    p.device_info_cb = lambda v: print("Device Info: {}".format(v))
+    p.status_cb = lambda v: print("Device Status: {}".format(v))
 
     if args.request_device_info:
         p.request_device_info()
-        print(p.check_resp())
+        p.check_resp()
     
     n = args.read_count
 
     while True:
         p.request_read()
-        print(p.check_resp())
+        p.check_resp()
         n = n - 1
         if n == 0:
             sys.exit(0)
