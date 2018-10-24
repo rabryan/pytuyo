@@ -4,11 +4,11 @@ import time
 
 d = usb.core.find(idVendor=0x0fe7, idProduct=0x4001)
 
-try:
+if d.is_kernel_driver_active(0):
     d.detach_kernel_driver(0)
-except usb.USBError as e:
-    pass # kernel driver is already detached
-    #log.warning(str(e))
+#except usb.USBError as e:
+#    pass # kernel driver is already detached
+#    #log.warning(str(e))
 
 d.reset()
 d.set_configuration(1)
