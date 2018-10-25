@@ -18,6 +18,7 @@ class Pytuyo(object):
         self.setup()
 
     def setup(self):
+        d = self._usb_dev
         if d.is_kernel_driver_active(0):
             d.detach_kernel_driver(0)
         
@@ -51,7 +52,10 @@ class Pytuyo(object):
         
         bmRequestType=0x40 # Vendor Host-to-Device
         bRequest=0x03
-        d.ctrl_transfer(bmRequestType, bRequest, 0, 0, cmd)
+        try:
+            self._usb_dev.ctrl_transfer(bmRequestType, bRequest, 0, 0, cmd)
+        except usb.USBError as e:
+            log.error(str(e))
     
     def request_read(self):
         self.send_cmd('1')
