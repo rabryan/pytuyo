@@ -1,4 +1,4 @@
-PYTUYO - communicate with MITUTOYO USB-ITN cables using pyusb
+PYTUYO - communicate with MITUTOYO USB-ITN cables from python using pyusb
 
 proof-of-concept code showing how to connect to and request readings from a
 mitutoyo indicator via the USB-ITN cable.  Tested on linux.
