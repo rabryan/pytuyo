@@ -4,7 +4,21 @@ proof-of-concept code showing how to connect to and request readings from a
 mitutoyo indicator via the USB-ITN cable.  Tested on linux.
 
 The USB-ITN cable enumerates as an HID device, but can be used as a Virtual
-Comm Port (VCP) by sending data over the control endpoint and reading responses on
-the interrupt IN endpoint.  This VCP functionality requires performing an
+Comm Port (VCP) by sending data over the control endpoint and reading responses
+on the interrupt IN endpoint.  This VCP functionality requires performing an
 initial control transfer with 0xA5A5 as wValue.  The USB-ITN then responds to
-the host with a single byte data response of 0x01 over the control endpoint.  The device will now respond to various ASCII commands sent via control transfer data payloads.
+the host with a single byte data response of 0x01 over the control endpoint.
+The device will now respond to various ASCII commands sent via control transfer
+data payloads.
+
+
+In order to communicate on linux the mitutoyo cables need to be recognized and
+added to a group that the user has read/write access --
+
+if python3 read.py fails, but sudo python3 read.py works, then you likely have a
+permissions issue.  If your user has access to the plugdev group then adding
+this text to /etc/udev/rules.d/
+
+############## MITUTOYO USB-ITN-F CABLE ##############
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0fe7",\
+ATTRS{idProduct}=="4001", MODE="0660", GROUP="plugdev"

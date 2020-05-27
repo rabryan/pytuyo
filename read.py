@@ -1,7 +1,10 @@
+#!/usr/bin/python3
+
 import usb
-import logging as log
+import logging
 import time
 
+log = logging.getLogger(__name__)
 d = usb.core.find(idVendor=0x0fe7, idProduct=0x4001)
 
 if d.is_kernel_driver_active(0):
@@ -13,7 +16,7 @@ if d.is_kernel_driver_active(0):
 d.reset()
 d.set_configuration(1)
 c = d.get_active_configuration()
-epin = d.get_active_configuration().interfaces()[0].endpoints()[0]  
+epin = d.get_active_configuration().interfaces()[0].endpoints()[0]
 bmRequestType=0x40 # Vendor Host-to-Device
 bRequest=0x01
 wValue=0xA5A5
