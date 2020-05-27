@@ -1,8 +1,10 @@
 import usb
-import logging as log
+import logging
 import time
 import argparse
 from collections import deque
+
+log = logging.getLogger(__name__)
 
 CMD_TERMINATOR = b'\r'
 MSG_TERMINATOR = b'\r'
@@ -12,6 +14,7 @@ MAX_RXQUEUE_LEN=1024
 DATA_MSG='0'
 DEVICE_INFO_MSG='1'
 STATUS_MSG='9'
+
 
 class Pytuyo(object):
     def __init__(self, usb_dev):
@@ -162,6 +165,7 @@ class Pytuyo(object):
 
         return resp
 
+
 def make_parser():
     """ create the argument parser """
     parser = argparse.ArgumentParser(description="Interact with Mitutoyo USB-ITN with pyusb")
@@ -178,7 +182,7 @@ def make_parser():
 if __name__ == '__main__':
     import sys
     import time
-    log.basicConfig(level=log.INFO)
+    logging.basicConfig(level=logging.INFO)
     parser = make_parser()
     args = parser.parse_args()
 
