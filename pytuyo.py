@@ -1,10 +1,10 @@
-import usb
-import logging
-import time
-import argparse
-from collections import deque
+#!/usr/bin/python3
 
-log = logging.getLogger(__name__)
+import logging as _logging
+from collections import deque as _deque
+import usb as _usb
+
+_log = _logging.getLogger(__name__)
 
 CMD_TERMINATOR = b'\r'
 MSG_TERMINATOR = b'\r'
@@ -20,7 +20,7 @@ class Pytuyo(object):
     def __init__(self, usb_dev):
         self._usb_dev = usb_dev
         self._epin = None
-        self._rxqueue = deque(maxlen=MAX_RXQUEUE_LEN)
+        self._rxqueue = _deque(maxlen=MAX_RXQUEUE_LEN)
 
         self.data_cb = None
         self.device_info_cb = None
@@ -50,11 +50,11 @@ class Pytuyo(object):
         wIndex=0
         length=1
         res1 = d.ctrl_transfer(bmRequestType, bRequest, wValue, wIndex, length)
-        log.debug("Device Vendor resp: {}".format(res1))
+        _log.debug("Device Vendor resp: {}".format(res1))
 
     def send_cmd(self, cmd):
         if self._waiting_resp:
-            log.warning("Cannot send mitutuyo cmd - still waiting response")
+            _log.warning("Cannot send mitutuyo cmd - still waiting response")
             return
 
         if not isinstance(cmd, bytes):
@@ -70,8 +70,8 @@ class Pytuyo(object):
         bRequest=0x03
         try:
             self._usb_dev.ctrl_transfer(bmRequestType, bRequest, 0, 0, cmd)
-        except usb.USBError as e:
-            log.error(str(e))
+        except _usb.USBError as e:
+            _log.error(str(e))
 
         self._waiting_resp = True
 
@@ -84,7 +84,7 @@ class Pytuyo(object):
     def _process_data_resp(self, response):
         MIN_DATA_LEN=4
         if len(response) < MIN_DATA_LEN:
-            log.error("Invalid data measurement resp '{}'".format(response))
+            _log.error("Invalid data measurement resp '{}'".format(response))
             return
 
         #ignore first two characters - always "1A"
@@ -93,23 +93,22 @@ class Pytuyo(object):
         try:
             val = float(measure_str)
         except ValueError as e:
-            log.error("Unable to parse measurement '{}' to float".format(measure_str))
+            _log.error("Unable to parse measurement '{}' to float".format(measure_str))
             return
 
-        log.debug("Received measure data value: {}".format(val))
+        _log.debug("Received measure data value: {}".format(val))
 
         if self.data_cb: self.data_cb(val)
 
     def _process_device_info_resp(self, response):
-        log.debug("Received device info msg : {}".format(response))
+        _log.debug("Received device info msg : {}".format(response))
 
         if self.device_info_cb: self.device_info_cb(response)
 
     def _process_status_resp(self, response):
-        log.debug("Received device status msg : {}".format(response))
+        _log.debug("Received device status msg : {}".format(response))
 
         if self.status_cb: self.status_cb(response)
-
 
     def _rx(self):
         if self._epin is None:
@@ -123,9 +122,9 @@ class Pytuyo(object):
 
             self._rxqueue.extend(resp)
 
-        except usb.USBError as e:
+        except _usb.USBError as e:
             if e.errno == 110:
-                log.debug("USB timeout waiting for response")
+                _log.debug("USB timeout waiting for response")
                 return
             else:
                 raise
@@ -161,32 +160,36 @@ class Pytuyo(object):
         elif msg_c == STATUS_MSG:
             self._process_status_resp(resp[1:])
         else:
-            log.error("Ignoring unexpected device resp {}".format(resp))
+            _log.error("Ignoring unexpected device resp {}".format(resp))
 
         return resp
 
 
-def make_parser():
-    """ create the argument parser """
-    parser = argparse.ArgumentParser(description="Interact with Mitutoyo USB-ITN with pyusb")
-
-    parser.add_argument('-i', '--request-device-info', type=bool, default=True,
-            help='request device info')
-    parser.add_argument('-n', '--read-count', type=int, default=1,
-            help='Read count. -1 for inf')
-    parser.add_argument('-t', '--read-interval', type=float, default=1,
-            help='Read interval in seconds')
-
-    return parser
 
 if __name__ == '__main__':
     import sys
     import time
-    logging.basicConfig(level=logging.INFO)
+    import argparse
+
+
+    def make_parser():
+        """ create the argument parser """
+        parser = argparse.ArgumentParser(description="Interact with Mitutoyo USB-ITN with pyusb")
+
+        parser.add_argument('-i', '--request-device-info', type=bool, default=True,
+                help='request device info')
+        parser.add_argument('-n', '--read-count', type=int, default=1,
+                help='Read count. -1 for inf')
+        parser.add_argument('-t', '--read-interval', type=float, default=1,
+                help='Read interval in seconds')
+
+        return parser
+
+    _logging.basicConfig(level=_logging.INFO)
     parser = make_parser()
     args = parser.parse_args()
 
-    d = usb.core.find(idVendor=0x0fe7, idProduct=0x4001)
+    d = _usb.core.find(idVendor=0x0fe7, idProduct=0x4001)
     if d is None:
         print("Could not find USB-ITN (idVendor=0x0fe7, idProduct=0x4001)")
         sys.exit(1)

@@ -1,11 +1,16 @@
 #!/usr/bin/python3
 
-import usb
-import logging
+import sys
 import time
+import logging
+import usb
 
 log = logging.getLogger(__name__)
 d = usb.core.find(idVendor=0x0fe7, idProduct=0x4001)
+
+if d is None:
+    log.error("No Mitutoyo device matching 0fe7:4001 found")
+    sys.exit(1)
 
 if d.is_kernel_driver_active(0):
     d.detach_kernel_driver(0)
