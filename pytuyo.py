@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import time
 import logging as _logging
 from collections import deque as _deque
 import usb as _usb
@@ -22,7 +23,10 @@ class Pytuyo(object):
         self._epin = None
         self._rxqueue = _deque(maxlen=MAX_RXQUEUE_LEN)
 
+        self._last_data = None
         self.data_cb = None
+
+        self.device_info = None
         self.device_info_cb = None
         self.status_cb = None
         self._waiting_resp = False
@@ -81,6 +85,31 @@ class Pytuyo(object):
     def request_device_info(self):
         self.send_cmd('V')
 
+    def get_reading(self, timeout=1):
+        self._last_data = None
+        self.request_read()
+        time_end = timeout + time.time()
+        while self._last_data is None:
+            if time.time() > time_end:
+                _log.error("Timeout error waiting for reading")
+                return None
+            self.check_resp()
+            time.sleep(0.005)
+        return self._last_data
+
+    def get_device_info(self, timeout=1):
+        if self.device_info is not None:
+            return self.device_info
+        self.request_device_info()
+        time_end = timeout + time.time()
+        while self.device_info is None:
+            if time.time() > time_end:
+                _log.error("Timeout error waiting for reading")
+                return None
+            self.check_resp()
+            time.sleep(0.005)
+        return self.device_info
+
     def _process_data_resp(self, response):
         MIN_DATA_LEN=4
         if len(response) < MIN_DATA_LEN:
@@ -98,17 +127,22 @@ class Pytuyo(object):
 
         _log.debug("Received measure data value: {}".format(val))
 
-        if self.data_cb: self.data_cb(val)
+        self._last_data = val
+        if self.data_cb:
+            self.data_cb(val)
 
     def _process_device_info_resp(self, response):
         _log.debug("Received device info msg : {}".format(response))
 
-        if self.device_info_cb: self.device_info_cb(response)
+        self.device_info = response
+        if self.device_info_cb:
+            self.device_info_cb(response)
 
     def _process_status_resp(self, response):
         _log.debug("Received device status msg : {}".format(response))
 
-        if self.status_cb: self.status_cb(response)
+        if self.status_cb:
+            self.status_cb(response)
 
     def _rx(self):
         if self._epin is None:
