@@ -56,10 +56,14 @@ class Pytuyo(object):
         res1 = d.ctrl_transfer(bmRequestType, bRequest, wValue, wIndex, length)
         _log.debug("Device Vendor resp: {}".format(res1))
 
-    def send_cmd(self, cmd):
-        if self._waiting_resp:
-            _log.warning("Cannot send mitutuyo cmd - still waiting response")
-            return
+    def send_cmd(self, cmd, timeout=1):
+        end_time = time.time() + timeout
+        while self._waiting_resp:
+            if time.time() > end_time:
+                _log.warning("Cannot send mitutuyo cmd - still waiting response")
+                return
+            time.sleep(0.1)
+            self.check_resp()
 
         if not isinstance(cmd, bytes):
             try:
@@ -79,11 +83,11 @@ class Pytuyo(object):
 
         self._waiting_resp = True
 
-    def request_read(self):
-        self.send_cmd('1')
+    def request_read(self, timeout=1):
+        self.send_cmd('1', timeout=timeout)
 
-    def request_device_info(self):
-        self.send_cmd('V')
+    def request_device_info(self, timeout=1):
+        self.send_cmd('V', timeout=timeout)
 
     def get_reading(self, timeout=1):
         self._last_data = None
