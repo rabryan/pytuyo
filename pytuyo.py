@@ -18,6 +18,14 @@ STATUS_MSG='9'
 
 
 class Pytuyo(object):
+    _USB_CTRL_REQ_WAIT_TIME_S = .5
+
+    _UNIT_SCALES = {'mm':(lambda x:x), 'um':(lambda x:round(x*1000))}
+    _UNITS = 'mm'
+    @classmethod
+    def set_unit_scale(cls, scale='um'):
+        cls._UNITS = scale
+
     def __init__(self, usb_dev):
         self._usb_dev = usb_dev
         self._epin = None
@@ -29,7 +37,7 @@ class Pytuyo(object):
         self.device_info = None
         self.device_info_cb = None
         self.status_cb = None
-        self._waiting_resp = False
+        self._request_wait_timeout = None
 
         self.setup()
 
@@ -58,7 +66,7 @@ class Pytuyo(object):
 
     def send_cmd(self, cmd, timeout=1):
         end_time = time.time() + timeout
-        while self._waiting_resp:
+        while self._request_wait_timeout is not None:
             if time.time() > end_time:
                 _log.warning("Cannot send mitutuyo cmd - still waiting response")
                 return
@@ -80,8 +88,8 @@ class Pytuyo(object):
             self._usb_dev.ctrl_transfer(bmRequestType, bRequest, 0, 0, cmd)
         except _usb.USBError as e:
             _log.error(str(e))
-
-        self._waiting_resp = True
+        else:
+            self._request_wait_timeout = time.time() + Pytuyo._USB_CTRL_REQ_WAIT_TIME_S
 
     def request_read(self, timeout=1):
         self.send_cmd('1', timeout=timeout)
@@ -98,7 +106,7 @@ class Pytuyo(object):
                 _log.error("Timeout error waiting for reading")
                 return None
             self.check_resp()
-            time.sleep(0.005)
+            time.sleep(0.05)
         return self._last_data
 
     def get_device_info(self, timeout=1):
@@ -111,7 +119,7 @@ class Pytuyo(object):
                 _log.error("Timeout error waiting for reading")
                 return None
             self.check_resp()
-            time.sleep(0.005)
+            time.sleep(0.05)
         return self.device_info
 
     def _process_data_resp(self, response):
@@ -130,10 +138,11 @@ class Pytuyo(object):
             return
 
         _log.debug("Received measure data value: {}".format(val))
+        measure = self._UNIT_SCALES[self._UNITS](val)
 
-        self._last_data = val
+        self._last_data = measure
         if self.data_cb:
-            self.data_cb(val)
+            self.data_cb(measure)
 
     def _process_device_info_resp(self, response):
         _log.debug("Received device info msg : {}".format(response))
@@ -154,40 +163,40 @@ class Pytuyo(object):
         try:
             max_rx = self._epin.wMaxPacketSize
             resp = self._epin.read(max_rx, READ_TIMEOUT_MS)
-
-            if not resp or len(resp) == 0:
-                return
-
-            self._rxqueue.extend(resp)
-
         except _usb.USBError as e:
             if e.errno == 110:
                 _log.debug("USB timeout waiting for response")
                 return
             else:
                 raise
+        if not resp or len(resp) == 0:
+            return
+        self._rxqueue.extend(resp)
 
     def check_resp(self):
         self._rx()
 
         if len(self._rxqueue) == 0:
-            return
-
-        rxdata = bytes(self._rxqueue)
-        eor_idx = rxdata.find(MSG_TERMINATOR)
+            eor_idx = -1
+        else:
+            rxdata = bytes(self._rxqueue)
+            eor_idx = rxdata.find(MSG_TERMINATOR)
         if eor_idx == -1:
             """ message terminator not received yet"""
+            if self._request_wait_timeout is not None and time.time() > self._request_wait_timeout:
+                _log.error("Timeout error waiting for a response")
+                self._request_wait_timeout = None
             return
 
         resp = rxdata[:eor_idx]
-
         self._rxqueue.clear()
+
         if len(rxdata) >= eor_idx:
             """ add back any data that will not be processed"""
-            rem = resp[eor_idx+1:]
-            self._rxqueue.extend(rem)
+            remainder = resp[eor_idx+1:]
+            self._rxqueue.extend(remainder)
 
-        self._waiting_resp = False
+        self._request_wait_timeout = None
 
         resp = resp.decode()
         msg_c = resp[0]
@@ -199,7 +208,6 @@ class Pytuyo(object):
             self._process_status_resp(resp[1:])
         else:
             _log.error("Ignoring unexpected device resp {}".format(resp))
-
         return resp
 
 
