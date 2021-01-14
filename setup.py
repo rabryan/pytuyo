@@ -10,7 +10,7 @@ with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setup(name='pytuyo',
-      version='1.0+{}'.format(GIT_HEAD_REV),
+      version='1.0.0+{}'.format(GIT_HEAD_REV),
       url="https://github.com/rabryan/pytuyo",
       description='Python Mitutoyo Interface',
       author='Richard Bryan',
