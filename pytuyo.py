@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+# FIXME : need to handle when device is disconnected, including the ability to
+# reset an interface if / when the device is reconnected
 
 import time
 import logging as _logging
@@ -166,6 +168,18 @@ class Pytuyo(object):
         except _usb.USBError as e:
             if e.errno == 110:
                 _log.debug("USB timeout waiting for response")
+                return
+            elif e.errno == 19:
+                _log.debug("USB no-device error / disconnected")
+                return
+            else:
+                raise
+        except _usb.core.USBError as e:
+            if e.errno == 110:
+                _log.debug("USB timeout waiting for response")
+                return
+            elif e.errno == 19:
+                _log.debug("USB no-device error / disconnected")
                 return
             else:
                 raise
