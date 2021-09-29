@@ -105,7 +105,7 @@ class Pytuyo(object):
         time_end = timeout + time.time()
         while self._last_data is None:
             if time.time() > time_end:
-                _log.error("Timeout error waiting for reading")
+                _log.error("pytuyo timeout waiting for reading")
                 return None
             self.check_resp()
             time.sleep(0.05)
