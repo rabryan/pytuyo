@@ -73,7 +73,11 @@ class Pytuyo(object):
                 _log.warning("Cannot send mitutuyo cmd - still waiting response")
                 return
             time.sleep(0.1)
-            self.check_resp()
+            try:
+                self.check_resp()
+            except Exception as e:
+                log.error("Exception checking mituyou response")
+                log.error(str(e))
 
         if not isinstance(cmd, bytes):
             try:
@@ -188,7 +192,12 @@ class Pytuyo(object):
         self._rxqueue.extend(resp)
 
     def check_resp(self):
-        self._rx()
+        try:
+            self._rx()
+        except Exception as e:
+            log.error("Exception checking mituyou response")
+            log.error(str(e))
+            return
 
         if len(self._rxqueue) == 0:
             eor_idx = -1
