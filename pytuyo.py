@@ -76,8 +76,8 @@ class Pytuyo(object):
             try:
                 self.check_resp()
             except Exception as e:
-                log.error("Exception checking mituyou response")
-                log.error(str(e))
+                _log.error("Exception checking mituyou response")
+                _log.error(str(e))
 
         if not isinstance(cmd, bytes):
             try:
@@ -195,8 +195,8 @@ class Pytuyo(object):
         try:
             self._rx()
         except Exception as e:
-            log.error("Exception checking mituyou response")
-            log.error(str(e))
+            _log.error("Exception checking mituyou response")
+            _log.error(str(e))
             return
 
         if len(self._rxqueue) == 0:
