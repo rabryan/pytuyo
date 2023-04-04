@@ -46,4 +46,4 @@ d.ctrl_transfer(bmRequestType, bRequest, wValue, wIndex, data)
 
 MAX_PKT=64
 reading = epin.read(MAX_PKT)
-print(reading.tostring())
+print(reading)
